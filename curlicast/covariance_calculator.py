@@ -25,7 +25,7 @@ class CovarianceCalculatorFsky(object):
         if i2 == j2:
             cl_i2_j2 += nl_vector[i2]
 
-        var = (cl_i1_j1*cl_i2_j2+cl_i1_j2*cl_i2_j1)*factor_modecount
+        var = (cl_i1_j1*cl_i2_j2+cl_i1_j2*cl_i2_j1)*self.factor_modecount
         cov = np.diag(var)
         return cov
 
