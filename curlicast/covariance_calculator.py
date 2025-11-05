@@ -15,17 +15,21 @@ class CovarianceCalculatorFsky(object):
         cl_i1_j1 = cl_matrix[i1, j1]
         if i1 == j1:
             cl_i1_j1 += nl_vector[i1]
+        cl_i1_j1 = self.b.bin_cell(cl_i1_j1)
         cl_i1_j2 = cl_matrix[i1, j2]
         if i1 == j2:
             cl_i1_j2 += nl_vector[i1]
+        cl_i1_j2 = self.b.bin_cell(cl_i1_j2)
         cl_i2_j1 = cl_matrix[i2, j1]
         if i2 == j1:
             cl_i2_j1 += nl_vector[i2]
+        cl_i2_j1 = self.b.bin_cell(cl_i2_j1)
         cl_i2_j2 = cl_matrix[i2, j2]
         if i2 == j2:
             cl_i2_j2 += nl_vector[i2]
+        cl_i2_j2 = self.b.bin_cell(cl_i2_j2)
 
-        var = (cl_i1_j1*cl_i2_j2+cl_i1_j2*cl_i2_j1)*factor_modecount
+        var = (cl_i1_j1*cl_i2_j2+cl_i1_j2*cl_i2_j1)*self.factor_modecount
         cov = np.diag(var)
         return cov
 

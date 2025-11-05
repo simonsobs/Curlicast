@@ -107,7 +107,7 @@ def rolloff(ell, ell_off=None, alpha=-4, patience=2.):
     """Get a transfer function T(ell) to roll off red noise at ell <
     ell_off.  ell should be an ndarray.  Above the cut-off,
     T(ell>=ell_off) = 1.  For T(ell<ell_off) will roll off smoothly,
-    approaching T(ell) \propto ell^-alpha.  The speed at which the
+    approaching T(ell) propto ell^-alpha.  The speed at which the
     transition to the full power-law occurs is set by "patience";
     patience (> 1) is the maximum allowed value of:
 
@@ -340,7 +340,7 @@ as a contribution from atmospheric loading, which is should scale
 roughly with 1/sin(elevation).  The 'coeffs' below give coefficents A,
 B for the model
 
-   sens \propto A + B / sin(elevation)
+   sens propto A + B / sin(elevation)
 
 For 27 GHz and higher, results are from the Simons Observatory LAT
 noise model provided by Carlos Sierra and Jeff McMahon on March 11,

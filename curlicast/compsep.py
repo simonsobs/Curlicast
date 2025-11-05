@@ -4,10 +4,10 @@ import argparse
 import yaml
 import sacc
 
-from curlicast.fg_model import FGModel
-from curlicast.param_manager import ParameterManager
-from curlicast.bandpasses import (Bandpass, rotate_cells, rotate_cells_mat,
-                                  decorrelated_bpass)
+from .fg_model import FGModel
+from .param_manager import ParameterManager
+from .bandpasses import (Bandpass, rotate_cells, rotate_cells_mat,
+                         decorrelated_bpass)
 
 
 def _yaml_loader(config):
@@ -27,20 +27,20 @@ class CompSep(object):
     This stage does harmonic domain foreground cleaning (e.g. BICEP).
     The foreground model parameters are defined in the config.yml file.
     """
-    def __init__(self, args):
+    def __init__(self, config_fname):
         """
         Initialize from the command line arguments.
 
         Parameters
         ----------
-        args : str
-            Command line arguments.
+        config_fname : str
+            Path to yaml file
         """
 
         # Load the configuration file
-        config = _yaml_loader(args.config)
+        setattr(self, "config_fname", config_fname)
+        config = _yaml_loader(config_fname)
         self.config = config["global"] | config["CompSep"]
-        setattr(self, "config_fname", getattr(args, "config"))
         setattr(self, "data", self.config["data"])
 
     def setup_compsep(self):
@@ -130,7 +130,7 @@ class CompSep(object):
         self.use_handl = self.config['likelihood_type'] == 'h&l'
 
         # Read data
-        cells_coadded = self.data["cells_coadded"].format(sim_id=self.sim_id)
+        cells_coadded = self.data["cells_coadded"]
         self.s = sacc.Sacc.load_fits(cells_coadded)
         self.s_cov = sacc.Sacc.load_fits(self.data["cells_coadded_cov"])
         if self.use_handl:
@@ -870,38 +870,10 @@ class CompSep(object):
         Run the BB component separation stage.
         """
         # Make output directory
-        self.output_dir = self.config["output_dir"].format(sim_id=self.sim_id)
+        self.output_dir = self.config["output_dir"]
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # Make duplicate of config file
-        from shutil import copyfile
-        copyfile(self.config_fname,
-                 self.config["config_copy"].format(sim_id=self.sim_id))
         self.setup_compsep()
-
-        # Get the chi2 and best-fit estimates
-        from scipy.stats import chi2 as scipy_chi2
-        sampler = self.minimizer()
-        chi2 = -2*self.lnprob(sampler)
-        ndof = len(self.bbcovar)
-        kwargs = {
-            "params": sampler,
-            "names": self.params.p_free_names,
-            "chi2": chi2,
-            "ndof": len(self.bbcovar),
-            "pte": scipy_chi2.sf(chi2, ndof, loc=0, scale=1)
-        }
-        np.savez(self.output_dir+'/chi2.npz', **kwargs)
-        with open(self.output_dir+'/chi2.txt', 'w') as f:
-            for key, value in kwargs.items():
-                f.write('%s: %s\n' % (key, value))
-        print("Saved best-fit parameters")
-
-        # Get best-fit power spectra
-        at_min = self.config.get('predict_at_minimum', True)
-        save_npz = not self.config.get('predict_to_sacc', True)
-        sampler = self.predicted_spectra(at_min=at_min, save_npz=save_npz)
-        print("Predicted spectra saved")
 
         if self.config.get('sampler') == 'emcee':
             sampler, timing = self.emcee_sampler()
@@ -951,7 +923,7 @@ def main(args):
         * config: string.
           Path to configuration file with input parameters.
     """
-    compsep = CompSep(args)
+    compsep = CompSep(args.config)
     compsep.run()
 
 

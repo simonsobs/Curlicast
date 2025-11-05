@@ -1,4 +1,9 @@
 import numpy as np
+import healpy as hp
+import sacc
+import pymaster as nmt
+from .covariance_calculator import (
+    CovarianceCalculatorMask, CovarianceCalculatorFsky)
 
 
 def _fcmb(nu):
@@ -9,13 +14,13 @@ def _fcmb(nu):
 
 def _comp_sed(nu,nu0,beta,temp,typ):
     if typ == 'cmb':
-        return fcmb(nu)
+        return _fcmb(nu)
     elif typ == 'dust':
         x_to=0.04799244662211351*nu/temp
         x_from=0.04799244662211351*nu0/temp
-        return (nu/nu0)**(1+beta)*(np.exp(x_from)-1)/(np.exp(x_to)-1)*fcmb(nu0)
+        return (nu/nu0)**(1+beta)*(np.exp(x_from)-1)/(np.exp(x_to)-1)*_fcmb(nu0)
     elif typ == 'sync':
-        return (nu/nu0)**beta*fcmb(nu0)
+        return (nu/nu0)**beta*_fcmb(nu0)
     return None
 
 
@@ -44,10 +49,11 @@ class Bpass(object):
     def __init__(self, name, nu, bnu):
         self.nu = nu
         self.bnu = bnu
+        self.dnu = np.zeros(len(nu))
         self.dnu[1:] = np.diff(self.nu)
         self.dnu[0] = self.dnu[1]
         # CMB units
-        norm = np.sum(self.dnu*self.bnu*self.nu**2*fcmb(self.nu))
+        norm = np.sum(self.dnu*self.bnu*self.nu**2*_fcmb(self.nu))
         self.bnu /= norm
 
     @classmethod
@@ -57,7 +63,7 @@ class Bpass(object):
 
     @classmethod
     def from_freq(cls, name, freq):
-        nus = np.array([freq-1., freq, freq+1.])
+        nu = np.array([freq-1., freq, freq+1.])
         bnu = np.array([0., 1., 0.])
         return cls(name, nu, bnu)
 
@@ -78,12 +84,14 @@ class DataGenerator(object):
                 icl += 1
 
     def _get_survey_info_mask(self, config_survey):
-        mask = hp.read_map(config_survey['mask'])
-        nhits = hp.read_map(config_survey["nhits"])
+        mask = hp.ud_grade(hp.read_map(config_survey['mask']),
+                           nside_out=self.nside)
+        nhits = hp.ud_grade(hp.read_map(config_survey["nhits"]),
+                            nside_out=self.nside)
         f = nmt.NmtField(mask, None, spin=2, purify_b=True, purify_e=True)
         w = nmt.NmtWorkspace.from_fields(f, f, self.bins)
         self.cc = CovarianceCalculatorMask(mask, nhits, self.bins)
-        self.bpw = w.get_bandpower_windows()
+        self.bpw = w.get_bandpower_windows()[3, :, 3, :]
 
     def _get_survey_info_fsky(self, config_survey):
         from scipy.signal import unit_impulse
@@ -114,11 +122,12 @@ class DataGeneratorPlawFG(DataGenerator):
         self.beta_dust = config_sky['FGs'].get('beta_dust', 1.54)
         self.T_dust = config_sky['FGs'].get('T_dust', 20.9)
         self.fname_camb = config_sky['camb_file']
+        self.Alens = config_sky.get('Alens', 1.0)
         self.nu0_sync = config_sky['FGs'].get('nu0_sync', 23.0)
         self.nu0_dust = config_sky['FGs'].get('nu0_dust', 353.0)
 
         # Sky geometry info
-        self.get_survey_info(config_gobal, config_survey)
+        self.get_survey_info(config_global, config_survey)
 
         # Instrument info
         self.freqs = np.array(config_inst.get('freqs',
@@ -139,9 +148,9 @@ class DataGeneratorPlawFG(DataGenerator):
     def get_convolved_seds(self):
         seds = np.zeros([3, self.nfreqs])
         for i, bps in enumerate(self.bpss):
-            seds[0, i] = bps.convolve_sed(lambda nu : comp_sed(nu, None, None, None, 'cmb'))
-            seds[1, i] = bps.convolve_sed(lambda nu : comp_sed(nu, self.nu0_sync, self.beta_sync, None, 'sync'))
-            seds[2, i] = bps.convolve_sed(lambda nu : comp_sed(nu, self.nu0_dust, self.beta_dust, self.temp_dust, 'dust'))
+            seds[0, i] = bps.convolve_sed(lambda nu : _comp_sed(nu, None, None, None, 'cmb'))
+            seds[1, i] = bps.convolve_sed(lambda nu : _comp_sed(nu, self.nu0_sync, self.beta_sync, None, 'sync'))
+            seds[2, i] = bps.convolve_sed(lambda nu : _comp_sed(nu, self.nu0_dust, self.beta_dust, self.T_dust, 'dust'))
         return seds
 
     def generate_sacc_file(self):
@@ -150,14 +159,14 @@ class DataGeneratorPlawFG(DataGenerator):
         dl2cl = np.zeros_like(cl2dl)
         dl2cl[self.ls > 0] = 1 / cl2dl[self.ls > 0]
         dl_sync, dl_dust, dl_cmb = self.get_component_spectra()
-        cl_comp = np.array([dls_cmb, dls_sync, dls_dust]) * dl2cl[None, :]
+        cl_comp = np.array([dl_cmb, dl_sync, dl_dust]) * dl2cl[None, :]
 
         # Component SEDs (ncomp, nfreq)
-        seds = get_convolved_seds(band_names, bpss)
+        seds = self.get_convolved_seds()
 
         # Frequency C_ells
         cl_freqs = np.zeros([self.nfreqs, self.nfreqs, self.lmax+1])
-        for i, sed in seds:
+        for i, sed in enumerate(seds):
             clc = cl_comp[i]
             cl_freqs += sed[:, None, None] * sed[None, :, None] * clc[None, None, :]
         # Convolve with bandpowers
@@ -170,17 +179,40 @@ class DataGeneratorPlawFG(DataGenerator):
         ncross = self.nfreqs * (self.nfreqs + 1) // 2
         covar = np.zeros([ncross, self.n_bpw, ncross, self.n_bpw])
         for icli, i1, i2 in self._iterate_cls():
+            print(icli, ncross)
             for iclj, j1, j2 in self._iterate_cls():
+                print(iclj, ncross)
                 if iclj >= icli:
-                    cov_block = self.cc.get_covar(self, cl_freqs, nl_freq, i1, i2, j1, j2)
+                    cov_block = self.cc.get_covar(cl_freqs, nl_freqs,
+                                                  i1, i2, j1, j2)
                     covar[icli, :, iclj, :] = cov_block
                     if iclj != icli:
                         covar[iclj, :, icli, :] = cov_block.T
+                else:
+                    continue
         covar = covar.reshape([ncross*self.n_bpw, ncross*self.n_bpw])
 
         # Sacc file
+        s = sacc.Sacc()
         # Tracers
+        for i in range(self.nfreqs):
+            s.add_tracer("NuMap", 'band%d' % (i+1),
+                         quantity='cmb_polarization',
+                         spin=2,
+                         nu=self.bpss[i].nu,
+                         bandpass=self.bpss[i].bnu,
+                         ell=self.ls,
+                         beam=np.ones_like(self.ls),
+                         nu_unit='GHz',
+                         map_unit='uK_CMB')
         # Cells
+        leff = self.bins.get_effective_ells()
+        s_wins = sacc.BandpowerWindow(self.ls, self.bpw.T)
+        for icl, i1, i2 in self._iterate_cls():
+            n1 = "band%d" % (i1+1)
+            n2 = "band%d" % (i2+1)
+            s.add_ell_cl('cl_bb', n1, n2, leff, bpw_freqs[i1, i2], window=s_wins)
         # Covariance
+        s.add_covariance(covar)
 
         return s
