@@ -11,8 +11,14 @@ config_sky = {'FGs': {'A_sync': 1.6, 'alpha_sync': -0.93,
                       'beta_sync': -3.0, 'beta_dust': 1.54,
                       'T_dust': 20.9, 'nu0_sync': 23.0,
                       'nu0_dust': 353.0},
-              'camb_file': 'covariance_validation/data/camb_lens_nobb.dat'}
-config_inst = {'freqs': [27., 32., 90., 150., 220., 280.]}
+              'cmb': {'Alens': 1.0,
+                      'camb_file': 'covariance_validation/data/camb_lens_nobb.dat'}}
+config_inst = {'f27': {'bandpass': 27.},
+               'f39': {'bandpass': 39.},
+               'f93': {'bandpass': 93.},
+               'f150': {'bandpass': 150.},
+               'f220': {'bandpass': 220.},
+               'f280': {'bandpass': 280.}}
 
 
 class NoiseGenSO(object):

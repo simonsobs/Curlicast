@@ -5,50 +5,60 @@ cells_dir: &cells_dir !path [*base_dir, "your/cells/dir"]
 
 global:
     nside: 512
-    compute_dell: True
+    dell: 10
 
     # Path where copy of config file will be stored
     config_copy: !path [*chains_dir, config_copy.yaml]
-    
-    # These are the different frequency channels. Keywords must coincide with
-    # the tracer names inside the sacc files.
-    map_sets:
-        band1:  # 27 GHz
-            beam_file: !path [*aux_dir, beams/beam_LF1.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_1.txt]
-        band2:  # 39 GHz
-            beam_file: !path [*aux_dir, beams/beam_LF2.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_2.txt]
-        band3:  # 93 GHz
-            beam_file: !path [*aux_dir, beams/beam_MF1.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_3.txt]
-        band4:  # 145 GHz
-            beam_file: !path [*aux_dir, beams/beam_MF2.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_4.txt]
-        band5:  # 225 GHz
-            beam_file: !path [*aux_dir, beams/beam_UHF1.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_5.txt]
-        band6:  # 280 GHz
-            beam_file: !path [*aux_dir, beams/beam_UHF2.txt]
-            bandpass_file: !path [*aux_dir, bandpasses/bpss_6.txt]
-    
-    # Input data or sims
-    data:
-        # Path to sacc file with cross-split power spectra
-        cells_coadded: !path [*cells_dir, cells_coadded.fits]
-        # Path to sacc file with cross-split power spectrum covariance
-        cells_coadded_cov: !path [*cells_dir, cells_coadded_with_cov.fits]
-        # Path to sacc file with best-fit power spectra
-        cells_best_fit: !path [*chains_dir, cells_model.fits]
 
-        # Path to sacc file with noise power spectra
-        cells_noise: null
-        # Path to sacc file with null-test power spectra
-        cells_null: null
-        # Path to sacc file with fiducial power spectra
-        cells_fiducial: null
-        # Path to sacc file with auto- and cross-bundle power spectra
-        cells_coadded_total: null
+
+sky:  # FG parameters, if not passed used defaults
+    cmb:
+        camb_file: !path [*aux_dir, cmb.txt]
+        Alens: 1.0
+    FGs:
+        A_sync: 1.6
+        alpha_sync: -0.93
+        beta_sync: -3.0
+        A_dust: 28.0
+        alpha_dust: -0.16
+        beta_dust: 1.54
+        T_dust: 20.9
+        nu0_sync: 23.0
+        nu0_dust: 353.0
+
+
+survey:
+    # mask:  # either pass mask or fsky
+    fsky: 0.5
+    nhits:
+
+
+inst:
+    band1:  # 27 GHz
+        bandpass: 27.  # central frequency if single value, otherwise pass file path
+        beam: 91.  # in arcmin (gauss beam fwhm) # or a string with path to beam file
+        nell_fname: !path [*aux_dir, nell_27GHz.txt]
+    band2:  # 39 GHz
+        bandpass: 39.
+        beam: 63.
+        nell_fname: !path [*aux_dir, nell_39GHz.txt]
+    band3:  # 93 GHz
+        bandpass: 93.
+        beam: 30.
+        nell_fname: !path [*aux_dir, nell_93GHz.txt]
+    band4:  # 145 GHz
+        bandpass: 145.
+        nell_fname: !path [*aux_dir, nell_145GHz.txt]
+        beam: 17.
+    band5:  # 225 GHz
+        bandpass: 225
+        beam: 11.
+        nell_fname: !path [*aux_dir, nell_225GHz.txt]
+    band6:  # 280 GHz
+        bandpass: 280.
+        beam: 9.
+        nell_fname: !path [*aux_dir, nell_280GHz.txt]
+
 
 CompSep:
     output_dir: *chains_dir
@@ -177,6 +187,8 @@ CompSep:
                 amp_s_beta : ['amp_beta', 'tophat', [-5., 1., 5.]]
 
 BBPlotter:
+    compute_dell: True
+
     # MCMC chain file
     chain_file: !path [*chains_dir, emcee.npz]
     # chi2 npz file

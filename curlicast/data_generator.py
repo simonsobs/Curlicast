@@ -46,10 +46,10 @@ def _read_camb(fname, lmax):
 
 
 class Bpass(object):
-    def __init__(self, name, nu, bnu):
+    def __init__(self, nu, bnu):
         self.nu = nu
         self.bnu = bnu
-        self.dnu = np.zeros(len(nu))
+        self.dnu = np.zeros_like(self.nu)
         self.dnu[1:] = np.diff(self.nu)
         self.dnu[0] = self.dnu[1]
         # CMB units
@@ -57,15 +57,15 @@ class Bpass(object):
         self.bnu /= norm
 
     @classmethod
-    def from_file(cls, name, fname):
+    def from_file(cls, fname):
         nu, bnu = np.loadtxt(fname, unpack=True)
-        return cls(name, nu, bnu)
+        return cls(nu, bnu)
 
     @classmethod
-    def from_freq(cls, name, freq):
+    def from_freq(cls, freq):
         nu = np.array([freq-1., freq, freq+1.])
         bnu = np.array([0., 1., 0.])
-        return cls(name, nu, bnu)
+        return cls(nu, bnu)
 
     def convolve_sed(self,f):
         sed = np.sum(self.dnu*self.bnu*self.nu**2*f(self.nu))
@@ -109,11 +109,23 @@ class DataGenerator(object):
             self._get_survey_info_mask(config_survey)
         elif 'fsky' in config_survey:
             self._get_survey_info_fsky(config_survey)
-            
+
+    def get_bandpasses(self, config_inst):
+        all_bpass = []
+        for band in config_inst.values():
+            bp = band['bandpass']
+            if isinstance(bp, str):
+                all_bpass.append(Bpass.from_file(bp))
+            elif isinstance(bp, (float, int)):
+                all_bpass.append(Bpass.from_freq(bp))
+        self.bpss = all_bpass
+
 
 class DataGeneratorPlawFG(DataGenerator):
     def __init__(self, config_global, config_sky, config_inst, config_survey, noise_generator):
         # Component info
+        self.fname_camb = config_sky['cmb']['camb_file']
+        self.Alens = config_sky['cmb'].get('Alens', 1.0)
         self.A_sync = config_sky['FGs'].get('A_sync', 1.6)
         self.alpha_sync = config_sky['FGs'].get('alpha_sync', -0.93)
         self.beta_sync = config_sky['FGs'].get('beta_sync', -3.0)
@@ -121,8 +133,6 @@ class DataGeneratorPlawFG(DataGenerator):
         self.alpha_dust = config_sky['FGs'].get('alpha_dust', -0.16)
         self.beta_dust = config_sky['FGs'].get('beta_dust', 1.54)
         self.T_dust = config_sky['FGs'].get('T_dust', 20.9)
-        self.fname_camb = config_sky['camb_file']
-        self.Alens = config_sky.get('Alens', 1.0)
         self.nu0_sync = config_sky['FGs'].get('nu0_sync', 23.0)
         self.nu0_dust = config_sky['FGs'].get('nu0_dust', 353.0)
 
@@ -130,11 +140,8 @@ class DataGeneratorPlawFG(DataGenerator):
         self.get_survey_info(config_global, config_survey)
 
         # Instrument info
-        self.freqs = np.array(config_inst.get('freqs',
-                                              [27., 39., 90., 150., 220., 280.]))
-        self.nfreqs = len(self.freqs)
-        self.bpss = [Bpass.from_freq('f%d' % int(freq), freq)
-                     for freq in self.freqs]
+        self.get_bandpasses(config_inst)
+        self.nfreqs = len(self.bpss)
 
         # Noise generator
         self.noigen = noise_generator
@@ -179,9 +186,7 @@ class DataGeneratorPlawFG(DataGenerator):
         ncross = self.nfreqs * (self.nfreqs + 1) // 2
         covar = np.zeros([ncross, self.n_bpw, ncross, self.n_bpw])
         for icli, i1, i2 in self._iterate_cls():
-            print(icli, ncross)
             for iclj, j1, j2 in self._iterate_cls():
-                print(iclj, ncross)
                 if iclj >= icli:
                     cov_block = self.cc.get_covar(cl_freqs, nl_freqs,
                                                   i1, i2, j1, j2)
