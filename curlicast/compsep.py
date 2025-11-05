@@ -387,7 +387,7 @@ class CompSep(object):
         """
         Defines the total model and integrates over
         the bandpasses and windows.
-        Parameters are 
+        Parameters are
         """
         # [npol,npol,nell]
         cmb_cell = (params['r_tensor'] * self.cmb_tens +
@@ -510,7 +510,7 @@ class CompSep(object):
         #     rotation) ===
         # * Coadded CMB + dust + synchrotron D_ells: cls_array_fg
         #   (sorry for misleading name!)
-        #   shape: [nfreqs, nfreqs, n_ell, npol, npol] 
+        #   shape: [nfreqs, nfreqs, n_ell, npol, npol]
 
         # Window convolution
         cls_array_list = np.zeros([self.n_bpws, self.nfreqs,
