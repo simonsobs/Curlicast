@@ -170,7 +170,7 @@ class CovarianceCalculatorMask(object):
         psl_i2_j2 = w.couple_cell(np.array([cl0, cl0, cl0, cl]))/fsky
         cw_ss = self.get_cw('ss')
         cov_ss = nmt.gaussian_covariance(cw_ss, 2, 2, 2, 2,
-                                         psl_i1_j1, psl_i1_j1,
+                                         psl_i1_j1, psl_i1_j2,
                                          psl_i2_j1, psl_i2_j2,
                                          w)
         cov0 = cov_ss*0

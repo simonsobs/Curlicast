@@ -14,7 +14,7 @@ global:
     output_dir: blah
 
 CompSep:
-    sampler: fisher
+    sampler: emcee
     nwalkers: 24
     n_iters: 4000
     resume: False

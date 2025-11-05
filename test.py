@@ -4,8 +4,8 @@ import covariance_validation.noisecalc as nc
 
 config_global = {'nside': 256, 'dell': 10}
 config_survey = {'fsky': 0.1}
-#config_survey = {'mask': 'covariance_validation/data/mask_apodized.fits',
-#                 'nhits': 'covariance_validation/data/nhits_ns256.fits.gz'}
+config_survey = {'mask': 'covariance_validation/data/mask_apodized.fits',
+                 'nhits': 'covariance_validation/data/nhits_ns256.fits.gz'}
 config_sky = {'FGs': {'A_sync': 1.6, 'alpha_sync': -0.93,
                       'A_dust': 28.0, 'alpha_dust': -0.16,
                       'beta_sync': -3.0, 'beta_dust': 1.54,
@@ -43,6 +43,7 @@ class NoiseGenSO(object):
 
 ng = NoiseGenSO(n_tube_LF=1, n_tube_MF=9, n_tube_UHF=5)
 
+
 print("Generating data")
 dg = cct.DataGeneratorPlawFG(config_global=config_global,
                              config_sky=config_sky,
@@ -51,6 +52,7 @@ dg = cct.DataGeneratorPlawFG(config_global=config_global,
                              noise_generator=ng)
 s = dg.generate_sacc_file()
 s.save_fits("data.fits", overwrite=True)
+
 
 print("Running compsep")
 cs = cct.CompSep('params_test.yml')
