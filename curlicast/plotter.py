@@ -11,7 +11,7 @@ import yaml
 
 from itertools import combinations_with_replacement as cwr
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 
 def _yaml_loader(config):
@@ -78,7 +78,7 @@ def plot_triangle(lb, tracer_labels, clb_dict, clb_err_dict, clb_best_dict,
     """
     dim = len(list(tracer_labels.keys()))
     typ_label = {"cl_bb": r"$D_\ell^{BB}$", "cl_eb": r"$D_\ell^{EB}$",
-                 "cl_be": r"$D_\ell^{BE}$", "cl_ee": r"$D_\ell^{EE}$"} 
+                 "cl_be": r"$D_\ell^{BE}$", "cl_ee": r"$D_\ell^{EE}$"}
     fig, axes = plt.subplots(dim, dim,
                              figsize=(15, 10),
                              constrained_layout=True,
