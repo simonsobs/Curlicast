@@ -186,6 +186,7 @@ class DataGeneratorPlawFG(DataGenerator):
         ncross = self.nfreqs * (self.nfreqs + 1) // 2
         covar = np.zeros([ncross, self.n_bpw, ncross, self.n_bpw])
         for icli, i1, i2 in self._iterate_cls():
+            print(icli, i1, i2)
             for iclj, j1, j2 in self._iterate_cls():
                 if iclj >= icli:
                     cov_block = self.cc.get_covar(cl_freqs, nl_freqs,

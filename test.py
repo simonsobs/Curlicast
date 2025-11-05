@@ -41,8 +41,7 @@ class NoiseGenSO(object):
         nl[:, 2:] = nl_from2
         return nl
 
-
-ng = NoiseGenSO()
+ng = NoiseGenSO(n_tube_LF=1, n_tube_MF=9, n_tube_UHF=5)
 
 print("Generating data")
 dg = cct.DataGeneratorPlawFG(config_global=config_global,
@@ -57,6 +56,7 @@ print("Running compsep")
 cs = cct.CompSep('params_test.yml')
 cs.run()
 
+
 print("Analysing chains")
 d = np.load("blah/emcee.npz")
 nwalkers, nsamples, npar = d['chain'].shape
@@ -64,4 +64,4 @@ chain = d['chain'][:, 300:, :].reshape([-1, npar]).T
 for n, c in zip(d['names'], chain):
     mean = np.mean(c)
     std = np.std(c)
-    print(f'{n} = %.3lf +- %.3lf' % (mean, std))
+    print(f'{n} = %.5lf +- %.5lf' % (mean, std))
