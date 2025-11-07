@@ -3,7 +3,41 @@ import numpy as np
 import healpy as hp
 
 
-class CovarianceCalculator(object):
+class CovarianceCalculatorFsky(object):
+    def __init__(self, fsky, binning):
+        self.b = binning
+        self.fsky = fsky
+        self.leff = self.b.get_effective_ells()
+        self.dell = self.b.get_nell_list()
+        self.factor_modecount = 1/((2*self.leff+1)*self.dell*self.fsky)
+
+    def get_covar(self, cl_matrix, nl_vector, i1, i2, j1, j2):
+        cl_i1_j1 = cl_matrix[i1, j1].copy()
+        if i1 == j1:
+            cl_i1_j1 += nl_vector[i1]
+        cl_i1_j1 = self.b.bin_cell(cl_i1_j1)
+
+        cl_i1_j2 = cl_matrix[i1, j2].copy()
+        if i1 == j2:
+            cl_i1_j2 += nl_vector[i1]
+        cl_i1_j2 = self.b.bin_cell(cl_i1_j2)
+
+        cl_i2_j1 = cl_matrix[i2, j1].copy()
+        if i2 == j1:
+            cl_i2_j1 += nl_vector[i2]
+        cl_i2_j1 = self.b.bin_cell(cl_i2_j1)
+
+        cl_i2_j2 = cl_matrix[i2, j2].copy()
+        if i2 == j2:
+            cl_i2_j2 += nl_vector[i2]
+        cl_i2_j2 = self.b.bin_cell(cl_i2_j2)
+
+        var = (cl_i1_j1*cl_i2_j2+cl_i1_j2*cl_i2_j1)*self.factor_modecount
+        cov = np.diag(var)
+        return cov
+
+
+class CovarianceCalculatorMask(object):
     def __init__(self, mask, nhits, binning):
         self.b = binning
         self.mask = mask
@@ -126,17 +160,17 @@ class CovarianceCalculator(object):
         fsky = self.fsky
 
         # Get signal covariance
-        cl = cl_matrix[i1, j1]
+        cl = cl_matrix[i1, j1].copy()
         psl_i1_j1 = w.couple_cell(np.array([cl0, cl0, cl0, cl]))/fsky
-        cl = cl_matrix[i1, j2]
+        cl = cl_matrix[i1, j2].copy()
         psl_i1_j2 = w.couple_cell(np.array([cl0, cl0, cl0, cl]))/fsky
-        cl = cl_matrix[i2, j1]
+        cl = cl_matrix[i2, j1].copy()
         psl_i2_j1 = w.couple_cell(np.array([cl0, cl0, cl0, cl]))/fsky
-        cl = cl_matrix[i2, j2]
+        cl = cl_matrix[i2, j2].copy()
         psl_i2_j2 = w.couple_cell(np.array([cl0, cl0, cl0, cl]))/fsky
         cw_ss = self.get_cw('ss')
         cov_ss = nmt.gaussian_covariance(cw_ss, 2, 2, 2, 2,
-                                         psl_i1_j1, psl_i1_j1,
+                                         psl_i1_j1, psl_i1_j2,
                                          psl_i2_j1, psl_i2_j2,
                                          w)
         cov0 = cov_ss*0

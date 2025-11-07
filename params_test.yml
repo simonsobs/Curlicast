@@ -1,0 +1,68 @@
+global:
+    map_sets:
+        band1:
+        band2:
+        band3:
+        band4:
+        band5:
+        band6:
+    
+    data:
+        cells_coadded: data.fits
+        cells_coadded_cov: data.fits
+
+    output_dir: blah
+
+CompSep:
+    sampler: emcee
+    nwalkers: 24
+    n_iters: 4000
+    resume: False
+    likelihood_type: chi2
+    pol_channels: ['B']
+    l_min: 30
+    l_max: 300
+
+    cmb_model:
+        cmb_templates:
+        - "covariance_validation/data/camb_lens_nobb.dat"
+        - "covariance_validation/data/camb_lens_r1.dat"
+
+        params:
+            r_tensor: ['r_tensor', 'tophat', [-0.1, 0., 0.1]]
+            A_lens: ['A_lens', 'tophat', [0., 1.0, 1.]]
+
+    fg_model:
+        use_moments: False
+        moments_lmax: 300
+
+        component_1:
+            name: Dust
+            sed: Dust
+            cl:
+                BB: ClPowerLaw
+            sed_parameters:
+                beta_d: ['beta_d', 'tophat', [1.4, 1.54, 1.7]]
+                temp_d: ['temp', 'fixed', [20.9]]
+                nu0_d: ['nu0', 'fixed', [353.]]
+            cl_parameters:
+                BB:
+                   amp_d_bb: ['amp', 'tophat', [0, 28.0, 60]]
+                   alpha_d_bb: ['alpha', 'tophat', [-1.2, -0.16, 0.]]
+                   l0_d_bb: ['ell0', 'fixed', [80.]]
+            cross:
+                epsilon_ds: ['component_2', 'tophat', [-1., 0., 1.]]
+
+        component_2:
+            name: Synchrotron
+            sed: Synchrotron
+            cl:
+                BB: ClPowerLaw
+            sed_parameters:
+                beta_s: ['beta_pl', 'Gaussian', [-3., 0.3]]
+                nu0_s: ['nu0', 'fixed', [23.]]
+            cl_parameters:
+                BB:
+                    amp_s_bb: ['amp', 'tophat', [0., 1.6, 5.]]
+                    alpha_s_bb: ['alpha', 'tophat', [-2.5, -0.93, 0.]]
+                    l0_s_bb: ['ell0', 'fixed', [80.]]
